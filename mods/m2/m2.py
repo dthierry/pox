@@ -11,12 +11,17 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from itertools import product
 
+
+# Optimization solver
+# ipexe = "/Users/dthierry/Apps/ipopt_102623/ip_dir/bin/ipopt"
+ipexe = "/Users/dthierry/Apps/ipopt_dir/bin/ipopt"
+
 # # Parameters and data:
 
 # constraints for reactions:
-A_rxn = {1: 4.225e15,  #;//kmol bar^0.5 kgcat^-1 h^-1
-         2: 1.955e6,  #;//kmol bar^-1 kgcat^-1 h^-1
-         3: 1.020e15  #;//kmol bar^0.5 kgcat^-1 h^-1
+A_rxn = {1: 4.225e15,  # kmol bar^0.5 kgcat^-1 h^-1
+         2: 1.955e6,  # kmol bar^-1 kgcat^-1 h^-1
+         3: 1.020e15  # kmol bar^0.5 kgcat^-1 h^-1
          }
 Ak1 = 4.255e15   # pre-exponential factor of rate constant of reaction 1
 Ak2 = 1.955e6    # pre-exponential factor of rate constant of reaction 2
@@ -29,17 +34,18 @@ E3 = 243.9       # kJ/mol activation energy of reaction 3
 
 R_g = 0.0083144621  # kJ/(K*mol) gas constant
 
-#_eq ("R_1"): 4.707e12;//bar^2
-#A_eq ("R_2"): 1.142e-2;//[dimensionless]
-#A_eq ("R_3"): 5.375e10;//bar^2
-A_eq = {1: 4.707e12, # bar^2
-        2:1.142e-2, # []
-        3:5.375e10} # bar^2, [], bar^2
+# A_eq ("R_1"): 4.707e12;//bar^2
+# A_eq ("R_2"): 1.142e-2;//[dimensionless]
+# A_eq ("R_3"): 5.375e10;//bar^2
+
+A_eq = {1: 4.707e12,  # bar^2
+        2: 1.142e-2,  # []
+        3: 5.375e10}  # bar^2, [], bar^2
 
 # dhr in kJ/kmol
 dHr = {1: 206.1,
        2: -41.15,
-       3:164.9}
+       3: 164.9}
 # pre-exponential factor of adsorption constant
 AKa = {'CH4': 6.65e-4,  # bar^-1
        'H2O': 1.77e5,  #
@@ -73,7 +79,7 @@ eb = 0.38 + 0.073 * (1-(d_t_in/d_p-2)**2/(d_t_in/d_p)**2);
 
 
 # @dav: radius = 0.03
-#radius = 0.03/2                                   # m  radius
+# radius = 0.03/2                                   # m  radius
 radius = 0.1016/2
 
 Ac = np.pi * radius**2                          # m^2 cross sectional area
@@ -135,7 +141,7 @@ model.r_comp = pe.Var(model.z, model.SPECIES)
 
 model.DEN = pe.Var(model.z, initialize=1e0)
 
-    # define coeffs
+# define coeffs
 model.k1 = pe.Var(model.z, bounds=(0, None))
 model.k2 = pe.Var(model.z)
 model.k3 = pe.Var(model.z, bounds=(0, None))
@@ -155,27 +161,31 @@ model.dT = dae.DerivativeVar(model.T, wrt = model.z)
 # # Constraints
 # ## Reaction coefficients equations
 
-def defk1_rule(m,z):        # kmol*bar^(1/2)/(kgcat*hr) rate constant of reaction 1
+# kmol*bar^(1/2)/(kgcat*hr) rate constant of reaction 1
+def defk1_rule(m,z):
     return m.k1[z] == A_rxn[1]*pe.exp(-E1/(R_g*m.T[z]))
 model.defk1 = pe.Constraint(model.z, rule = defk1_rule)
 
-def defk2_rule(m,z):        # kmol/(bar* kgcat*hr) rate constant of reaction 2
+# kmol/(bar* kgcat*hr) rate constant of reaction 2
+def defk2_rule(m,z):
     return m.k2[z] == A_rxn[2]*pe.exp(-E2/(R_g*m.T[z]))
 model.defk2 = pe.Constraint(model.z, rule = defk2_rule)
 
-def defk3_rule(m,z):        # kmol*bar^(1/2)/(kgcat*hr) rate constant of reaction 3
+# kmol*bar^(1/2)/(kgcat*hr) rate constant of reaction 3
+def defk3_rule(m,z):
     return m.k3[z] == A_rxn[3]*pe.exp(-E3/(R_g*m.T[z]))
 model.defk3 = pe.Constraint(model.z, rule = defk3_rule)
 
-
-def defKe_rule(m, z, r):  # rate equilibrium constant
+# rate equilibrium constant
+def defKe_rule(m, z, r):
     return pe.log(m.Ke[z, r] / A_eq[r]) == (-dHr[r]/(R_g* m.T[z]))
 model.defKe = pe.Constraint(model.z, model.REACTIONS, rule = defKe_rule)
 
 
 model.logKa = pe.Var(model.z, model.SPECIES, initialize=1e-3)
 
-def deflogKa_rule(m, z, s):   # adsorption constant for each species
+# adsorption constant for each species
+def deflogKa_rule(m, z, s):
     if s == 'CO2' or s == 'N2':
         return pe.Constraint.Skip
     #return pe.log(m.Ka[z,s] / AKa[s])== (-dHa[s]/(R_g*m.T[z]))
@@ -183,7 +193,8 @@ def deflogKa_rule(m, z, s):   # adsorption constant for each species
 
 model.deflogKa = pe.Constraint(model.z, model.SPECIES, rule=deflogKa_rule)
 
-def defKa_rule(m, z, s):   # adsorption constant for each species
+# adsorption constant for each species
+def defKa_rule(m, z, s):
     if s == 'CO2' or s == 'N2':
         return pe.Constraint.Skip
     #return pe.log(m.Ka[z,s] / AKa[s])== (-dHa[s]/(R_g*m.T[z]))
@@ -243,8 +254,8 @@ def Patial_pressure_rule(m,z,s):  # patial pressure
     return m.P[z,s] * m.Ft[z] == m.F[z,s] * m.Pt[z]
 model.Patial_pressure = pe.Constraint(model.z, model.SPECIES,
                                       rule =  Patial_pressure_rule)
-
-def Def_DEN_rule(m,z):  # define DEN
+# define DEN (for rate functions)
+def Def_DEN_rule(m,z):
     return m.DEN[z] * m.P[z,'H2'] == m.P[z,'H2'] \
     + m.Ka[z,'CO']*m.P[z,'CO'] * m.P[z,'H2'] \
     + m.Ka[z,'CH4']*m.P[z,'CH4'] * m.P[z,'H2'] \
@@ -252,8 +263,8 @@ def Def_DEN_rule(m,z):  # define DEN
     + m.Ka[z,'H2O']*m.P[z,'H2O']
 model.Def_DEN = pe.Constraint(model.z, rule =  Def_DEN_rule)
 
-
-def Def_Rate1_rule(m,z):   # kmol/(kgcat*s) rate law for reaction 1
+# kmol/(kgcat*s) rate law for reaction 1
+def Def_Rate1_rule(m,z):
     return m.Rate[z,1] == \
         (m.k1[z] / (pow(m.P[z,'H2'],2.5)*m.DEN[z]**2)) \
         *(m.P[z,'CH4']*m.P[z,'H2O'] \
@@ -261,7 +272,8 @@ def Def_Rate1_rule(m,z):   # kmol/(kgcat*s) rate law for reaction 1
 
 model.Def_Rate1 = pe.Constraint(model.z, rule =  Def_Rate1_rule)
 
-def Def_Rate2_rule(m,z):   # kmol/(kgcat*s) rate law for reaction 2
+# kmol/(kgcat*s) rate law for reaction 2
+def Def_Rate2_rule(m,z):
     return m.Rate[z,2] == \
         (m.k2[z] / (m.P[z,'H2'] * m.DEN[z]**2)) \
         *(m.P[z,'CO']*m.P[z,'H2O'] \
@@ -269,7 +281,8 @@ def Def_Rate2_rule(m,z):   # kmol/(kgcat*s) rate law for reaction 2
 
 model.Def_Rate2 = pe.Constraint(model.z, rule =  Def_Rate2_rule)
 
-def Def_Rate3_rule(m,z):   # kmol/(kgcat*s) rate law for reaction 1
+# kmol/(kgcat*s) rate law for reaction 1
+def Def_Rate3_rule(m,z):
     return m.Rate[z,3] == \
         (m.k3[z] / (pow(m.P[z,'H2'],3.5) * m.DEN[z]**2)) \
         *(m.P[z,'CH4']*m.P[z,'H2O']**2 \
@@ -375,8 +388,7 @@ def Objective_rule(m):
 model.obj = pe.Objective(rule = Objective_rule) # Dummy Objective
 
 
-# # Solve
-
+# d2Cdz and d2Tdz variables
 model.cdum = pe.Var(model.z, model.SPECIES, initialize=1e-4)
 model.d2C = dae.DerivativeVar(model.cdum, wrt=model.z)
 model.tdum = pe.Var(model.z, initialize=1e-4)
@@ -392,10 +404,11 @@ m.d2T_disc_eq.deactivate()
 m.P[:, 'H2'].setlb(1e-8)
 m.P[:, 'H2O'].setlb(0e-00)
 
-# ipexe = "/Users/dthierry/Apps/ipopt_102623/ip_dir/bin/ipopt"
-ipexe = "/Users/dthierry/Apps/ipopt_dir/bin/ipopt"
 
 solver = pe.SolverFactory(ipexe)
+
+
+# Force the solution.
 
 solver.options['halt_on_ampl_error'] = 'yes'
 
@@ -465,75 +478,20 @@ m.Uf.set_value(100.0)
 
 solver.solve(m,tee=True, symbolic_solver_labels=True)
 
-# plots
-k = 0
-cvm = np.zeros(2)
-for i in m.SPECIES:
-    fv = np.array(pe.value(m.C[:, i]))
-    if k == 0:
-        cvm = fv
-    else:
-        cvm = np.vstack([cvm, fv])
-    k += 1
 
 tv = np.array(pe.value(m.T[:]))
 yv = np.array(pe.value(m.y[:]))
 zval = np.array(m.z.data())
 
-f, a = plt.subplots(1, 2, figsize=[4*2, 3])
-
-a[0].plot(zval, tv, "ro-")
-a[0].set_title("Temperature")
-a[1].plot(zval, yv, "ro-")
-
-a[1].set_title("y (dimensionless pressure)")
-a[1].set_ylim(bottom=0)
-
-f.tight_layout()
-# f.savefig("restults_v0124_a.png")
-
-nfigs = cvm.shape[0]
-f, a = plt.subplots(nfigs, 1, figsize=[4, 3*nfigs])
-
-for i in range(cvm.shape[0]):
-    a[i].plot(zval, cvm[i, :], "ro-", label=m.SPECIES.data()[i])
-    a[i].set_title(m.SPECIES.data()[i])
-    a[i].set_ylabel("Concentration kmol m^-3")
-    #a[i].set_ylim(bottom=0)
-
-f.tight_layout()
-# f.savefig("restults_v0124_b_2.png")
-
-# flow
-k = 0
-fvm = np.zeros(2)
-for i in m.SPECIES:
-    fv = np.array(pe.value(m.F[:, i]))
-    if k == 0:
-        fvm = fv
-    else:
-        fvm = np.vstack([fvm, fv])
-    k += 1
-
-
-nfigs = fvm.shape[0]
-f, a = plt.subplots(nfigs, 1, figsize=[4, 3*nfigs])
-
-for i in range(fvm.shape[0]):
-    a[i].plot(zval, fvm[i, :], "go-", label=m.SPECIES.data()[i])
-    a[i].set_title(m.SPECIES.data()[i])
-    a[i].set_ylabel("Flow kmol h^-1")
-    a[i].set_ylim(bottom=0)
-
-f.tight_layout()
-# f.savefig("restults_v0124_c.png")
+# At this point we have the results from the base model.
+# Now we build on top of that model.
 
 def x_rule(m, z, s):
     return m.X[z, s] * m.Ft[z] == m.F[z, s]
 model.x_eq = pe.Constraint(model.z, model.SPECIES, rule=x_rule)
 
 
-solver.solve(m,tee=True, symbolic_solver_labels=True)
+solver.solve(m, tee=True, symbolic_solver_labels=True)
 
 A_lambda = {}
 A_lambda["CH4"] = -0.0093
@@ -565,10 +523,11 @@ def lambda_i_rule(m, z, s):
     return m.lambda_i[z, s] == A_lambda[s] + B_lambda[s] * m.T[z] \
         + C_lambda[s] * m.T[z]**2
 model.lamda_i_eq = pe.Constraint(model.z, model.SPECIES, rule=lambda_i_rule)
-print("kenny")
-solver.solve(m,tee=True, symbolic_solver_labels=True)
 
+print("Lambda_i")
+solver.solve(m, tee=True, symbolic_solver_labels=True)
 
+# Some more parameters
 Tc = {}
 Tc["CH4"] = 190.58
 Tc["CO"] = 132.92
@@ -657,8 +616,8 @@ model.lambda_tr_eq = pe.Constraint(model.z, model.SPECIES, model.SPECIES,
                                 rule=lambda_tr_rule)
 
 
-print("KUNG")
-solver.solve(m,tee=True, symbolic_solver_labels=True)
+print("Lambda_tr")
+solver.solve(m, tee=True, symbolic_solver_labels=True)
 
 model.A_lambda_ij = pe.Var(model.z, model.SPECIES, model.SPECIES, initialize=1.)
 
@@ -669,15 +628,10 @@ def A_lambda_ij_rule(m, z, s1, s2):
 model.A_lambda_ij_e = pe.Constraint(model.z, model.SPECIES, model.SPECIES,
                                     rule=A_lambda_ij_rule)
 #
-solver.solve(m,tee=True, symbolic_solver_labels=True)
+print("A_lambda_ij")
+solver.solve(m, tee=True, symbolic_solver_labels=True)
 
 model.lg_den = pe.Var(model.z, model.SPECIES, initialize=1.1)
-# y_i("CH4")(z)*A_lambda_ij("CH4","CH4")(z) +
-# y_i("CO")(z) *A_lambda_ij("CH4","CO")(z) +
-# y_i("CO2")(z)*A_lambda_ij("CH4","CO2")(z) +
-# y_i("H2")(z) *A_lambda_ij("CH4","H2")(z)+
-# y_i("H2O")(z)*A_lambda_ij("CH4","H2O")(z)+
-# y_i("N2")(z) *A_lambda_ij("CH4","N2")(z))
 
 def lg_den_rule(m, z, s):
     return m.lg_den[z, s] == sum(m.X[z, s1]*m.A_lambda_ij[z, s, s1] for s1 in
@@ -685,7 +639,8 @@ def lg_den_rule(m, z, s):
 
 model.lg_den_eq = pe.Constraint(model.z, model.SPECIES, rule=lg_den_rule)
 
-solver.solve(m,tee=True, symbolic_solver_labels=True)
+print("ld_denominator")
+solver.solve(m, tee=True, symbolic_solver_labels=True)
 #
 model.lambda_g = pe.Var(model.z, initialize=1.1)
 
@@ -695,8 +650,9 @@ def lambda_g_rule(m, z):
 
 model.lambda_g_eq = pe.Constraint(model.z, rule=lambda_g_rule)
 print("lambda_g")
-solver.solve(m,tee=True, symbolic_solver_labels=True)
+solver.solve(m, tee=True, symbolic_solver_labels=True)
 
+# More parameters (viscosity)
 A_mu = {}
 A_mu["CH4"] = 3.844
 A_mu["CO"] = 23.811
@@ -767,31 +723,26 @@ E_cp["H2"] = -8.7585e-12
 E_cp["H2O"] = 3.6934e-12
 E_cp["N2"] = 2.5935e-13
 
-solver.solve(m,tee=True, symbolic_solver_labels=True)
+solver.solve(m, tee=True, symbolic_solver_labels=True)
 
 tavg = np.average(tv)
+
 model.mu_i = pe.Var(model.z, model.SPECIES, bounds=(0.0, None),
                     initialize=lambda m, z, s: A_mu[s] \
                     + B_mu[s]*tavg + C_mu[s]*tavg)
+
 def mu_i_rule(m, z, s):
     return m.mu_i[z, s] == A_mu[s] + B_mu[s] * m.T[z] + C_mu[s] * m.T[z]**2
 model.mu_i_eq = pe.Constraint(model.z, model.SPECIES, rule=mu_i_rule)
 
 print("\n\nmu_i\n\n")
-solver.solve(m,tee=True, symbolic_solver_labels=True)
-#m.mu_i.setlb(0.0)
-#solver.solve(m,tee=True, symbolic_solver_labels=True)
+solver.solve(m, tee=True, symbolic_solver_labels=True)
+
 
 model.mu_den = pe.Var(model.z, model.SPECIES,
                       initialize=lambda m, z, s:
                       sum(pe.value(m.X[z,s1])*phi[s, s1] for s1 in m.SPECIES))
 
-# y_i("CH4")(z)*phi("CH4","CH4")+
-# y_i("CO")(z)*phi("CH4","CO")+
-# y_i("CO2")(z)*phi("CH4","CO2")+
-# y_i("H2")(z)*phi("CH4","H2")+
-# y_i("H2O")(z)*phi("CH4","H2O")+
-# y_i("N2")(z)*phi("CH4","N2"))
 
 def mu_d_rule(m, z, s):
     return m.mu_den[z, s] == sum(m.X[z, s1]*phi[s,s1] for s1 in m.SPECIES)
@@ -818,8 +769,6 @@ model.mu_eq = pe.Constraint(model.z, rule=mu_rule)
 print("\n\nmu\n\n")
 solver.solve(m,tee=True, symbolic_solver_labels=True)
 
-#
-#solver.solve(m,tee=True, symbolic_solver_labels=True)
 model.CP_i = pe.Var(model.z, model.SPECIES,
                     initialize=lambda m, z, s: (A_cp[s] \
                     +B_cp[s]*pe.value(m.T[z]) \
@@ -828,9 +777,7 @@ model.CP_i = pe.Var(model.z, model.SPECIES,
                     +E_cp[s]*pe.value(m.T[z])**4)*(1000./MV[s])
                     )
 
-# CP_i (Components)(z) =
-# (A_cp + B_cp * T (z) + C_cp * T (z) ^ 2 + D_cp * T (z) ^ 3 + E_cp * T (z) ^4)
-# * (1000/MV);//component heat capacity  [J kg-1 K-1]
+# component heat capacity  [J kg-1 K-1]
 def cp_i_rule(m, z, s):
     return m.CP_i[z, s] == (A_cp[s]
                             + B_cp[s]*m.T[z]
@@ -845,20 +792,13 @@ print("\n\nCP_i\n\n")
 solver.solve(m,tee=True, symbolic_solver_labels=True)
 #
 
-#solver.solve(m,tee=True, symbolic_solver_labels=True)
 model.CP_g = pe.Var(model.z, bounds=(0, None),
                     initialize=lambda m, z: \
                     sum(pe.value(m.X[z, s])*pe.value(m.CP_i[z, s])
                         for s in m.SPECIES)
                     )
 
-# CP_g(z) = CP_i ("CH4")(z) *y_i ("CH4")(z)
-# + CP_i ("CO") (z) *y_i ("CO") (z)
-# + CP_i ("CO2")(z) *y_i ("CO2")(z)
-# + CP_i ("H2") (z) *y_i ("H2") (z)
-# + CP_i ("H2O")(z) *y_i ("H2O")(z)
-# + CP_i ("N2") (z) *y_i ("N2") (z); // heat capacity of gas mixture
-
+# heat capacity of gas mixture
 def cp_g_rule(m, z):
     return m.CP_g[z] == sum(m.X[z, s] * m.CP_i[z, s] for s in m.SPECIES)
 model.CP_g_eq = pe.Constraint(model.z, rule=cp_g_rule)
@@ -908,9 +848,6 @@ model.U = pe.Var(model.z, bounds=(0, None),
                   (pe.value(m.Pr[z])**0.4))
                  )
 
-#     U (z) = 0.4 * (lambda_g(z)/d_p) * (2.58 * Re(z)^(1/3) * Pr(z)^(1/3)
-#+ 0.094 * Re(z)^0.8 * Pr(z)^0.4);
-
 def u_rule(m, z):
     return m.U[z] == \
         0.4*(m.lambda_g[z]/d_p)*(2.58*(m.Re[z]**0.333)*(m.Pr[z]**0.333)\
@@ -921,15 +858,15 @@ model.U_eq = pe.Constraint(model.z, rule=u_rule)
 print("\n\nU\n\n")
 solver.solve(m,tee=True, symbolic_solver_labels=True)
 
-
+# we update the differential equation
 def Def_newdT_rule(m,z):
     return m.u*rho_g*CP_g* m.dT[z] == \
         4* m.U[z] * (Tw - m.T[z])/d_t_in \
         + (1-eb)*rho_p*1000*1000\
         *sum(eta[r]*m.Rate[z,r] * (-dHr[r]) for r in model.REACTIONS)
 
+# forget the old dTdz eqn
 model.del_component(model.Def_dT)
-#model.del_component(model.Def_dT_index)
 
 # energy balance
 model.Def_dT = pe.Constraint(model.z, rule =  Def_newdT_rule)
@@ -939,23 +876,9 @@ print("\n\nnew energy balance\n\n")
 solver.solve(m,tee=True, symbolic_solver_labels=True)
 
 
-
-k = 0
-cvm = np.zeros(2)
-for i in m.SPECIES:
-    fv = np.array(pe.value(m.C[:, i]))
-    if k == 0:
-        cvm = fv
-    else:
-        cvm = np.vstack([cvm, fv])
-    k += 1
-
-
-
-#model.cdum = pe.Var(model.z, model.SPECIES, initialize=1e-4)
-#model.d2C = dae.DerivativeVar(model.cdum, wrt=model.z)
-
+# forget the old dCdz eqn
 m.d2C_disc_eq.activate()
+
 # cdum = dC
 model.Def_cdum = pe.Constraint(model.z, model.SPECIES,
                                rule=lambda m, z, s: m.cdum[z, s] == m.dC[z, s])
@@ -964,6 +887,7 @@ model.bc_dc = pe.Constraint(model.SPECIES,
                             rule=lambda m, s: m.cdum[m.L, s] == 0.0)
 
 dscale = 1e-05
+
 #
 def Def_C_2_rule(m, z, c):
     return m.u*m.cdum[z, c] == eb * dscale * m.d2C[z, c] \
@@ -978,11 +902,12 @@ model.del_component(model.Def_C__index)
 print("\n\nnew component balance\n\n")
 solver.solve(m,tee=True, symbolic_solver_labels=True)
 
-
 #model.tdum = pe.Var(model.z, initialize=1e-4)
 #model.d2T = dae.DerivativeVar(model.tdum, wrt=model.z)
 
+# activate the collocation equation
 m.d2T_disc_eq.activate()
+
 # tdum = dT
 model.Def_tdum = pe.Constraint(model.z,
                                rule=lambda m, z: m.tdum[z] == m.dT[z])
@@ -1004,6 +929,7 @@ def Def_tsddc_rule(m, z):
 model.Def_tsddc = pe.Constraint(model.z, rule=Def_tsddc_rule)
 
 
+# new dTdz equation
 def Def_newdT_2_rule(m,z):
     return m.u*rho_g*m.CP_g[z]* m.tdum[z] == \
         4* m.U[z] * (Tw - m.T[z])/d_t_in \
@@ -1014,9 +940,8 @@ def Def_newdT_2_rule(m,z):
 
 model.Def_dT_2 = pe.Constraint(model.z, rule=Def_newdT_2_rule)
 
-
+# once again we forget the old dtdZ
 model.del_component(model.Def_dT)
-#model.del_component(model.Def_dT_index)
 
 print("\n\nnew temp balance\n\n")
 solver.solve(m,tee=True, symbolic_solver_labels=True)
@@ -1024,7 +949,7 @@ solver.solve(m,tee=True, symbolic_solver_labels=True)
 
 
 
-
+# diffusivity terms
 sigma_ = {}
 sigma_["CH4"] = 3.758
 sigma_["CO"] = 3.690
@@ -1167,7 +1092,7 @@ model.Def_tsddc = pe.Constraint(model.z, rule=Def_tsddc_rule)
 print("\n*=**=**=**=**=**=**=*\n")
 solver.solve(m,tee=True, symbolic_solver_labels=True)
 
-
+# Some plots
 k = 0
 cvm = np.zeros(2)
 for i in m.SPECIES:
@@ -1229,3 +1154,4 @@ for i in range(fvm.shape[0]):
 
 f.tight_layout()
 f.savefig("results_v0709_c.png")
+
