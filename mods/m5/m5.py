@@ -91,7 +91,6 @@ mu_ave = 2.97e-5                                # Pa*s  gas average viscosity
 # @dav: Cp_ave should have J/kg-K units
 Cp_ave = 41.06 # J/(mol*K) gas mixture specific heat
 
-
 rho_g = 1.6  # kg m^-3, gas density
 
 # # Define variables and parameters
@@ -109,13 +108,14 @@ model.REACTIONS = pe.RangeSet(3)
 
 model.P0 = pe.Param(initialize = 10., mutable=True) # inlet pressure
 model.T0 = pe.Param(initialize = 793.15) # inlet temperature
+model.C_in = pe.Param(model.SPECIES, mutable=True, initialize=1.0)
 
 # define reactor inlet variables
 
 model.FCH4_in = pe.Param(initialize = 30)    # fix inlet CH4
 
 model.F_in = pe.Var(model.SPECIES, bounds=(0,None))   # inlet flow rate kmol/h
-model.C_in = pe.Var(model.SPECIES, bounds=(0,None))
+
 model.Ft_in = pe.Var(bounds = (0,None))   # total inlet flow rate kmol/h
 model.X_in = pe.Var(model.SPECIES)   # inlet mole fraction
 # shouldn't this be below 1
@@ -132,11 +132,10 @@ model.C = pe.Var(model.z, model.r, model.SPECIES, bounds = (0,None)) # kmol/m^3
 
 model.X = pe.Var(model.z, model.r, model.SPECIES)
 
-model.y = pe.Var(model.z, model.r, bounds = (0,None))
-model.Pt = pe.Var(model.z, model.r, bounds = (0,None))
-#model.T = pe.Var(model.z, model.r, bounds = (1e1,None))
-model.T = pe.Var(model.z, model.r, bounds = (1e-06,None), initialize=m.T0)
-model.Ft = pe.Var(model.z, model.r, bounds = (0,None))
+model.y = pe.Var(model.z, model.r, bounds = (0, None))
+model.Pt = pe.Var(model.z, model.r, bounds = (0, None))
+model.T = pe.Var(model.z, model.r, bounds = (1e-06, None), initialize=m.T0)
+model.Ft = pe.Var(model.z, model.r, bounds = (0, None))
 model.P = pe.Var(model.z, model.r, model.SPECIES, bounds = (0,None), initialize=1e0)
 model.Rate = pe.Var(model.z, model.r, model.REACTIONS)
 
@@ -330,7 +329,6 @@ def d_r_comp_N2(m, z, r):
 model.Def_r_comp_n2 = pe.Constraint(model.z, model.r, rule=d_r_comp_N2)
 
 
-#
 def Def_dy_rule(m,z, r):
     if z == 0:
         return pe.Constraint.Skip
@@ -338,8 +336,6 @@ def Def_dy_rule(m,z, r):
         return -m.P0 * 1e5*m.dy[z, r] == \
             (m.u/d_p)*((1-eb)/eb**3)*(150*(1-eb)*mu_ave*1e-7/d_p + 1.75*rho_g*m.u)
 model.Def_dy = pe.Constraint(model.z, model.r, rule=Def_dy_rule)
-
-model.Uf = pe.Param(initialize=1.0, mutable =True)
 
 # u is in m / s
 
@@ -353,37 +349,21 @@ def def_fi_in(m, c):  # kmol h^-1
 model.Def_fi_in = pe.Constraint(model.SPECIES, rule=def_fi_in)
 
 
-
-
-m.C_in["CH4"].fix(5.46/ ( R_g * m.T0 )* (1/10))
-m.C_in["CO"].fix(0/(R_g*m.T0)*(1/10))
-m.C_in["CO2"].fix(0.31/ ( R_g * m.T0 )* (1/10))
-m.C_in["H2"].fix(0.68/ ( R_g * m.T0)* (1/10))
-m.C_in["H2O"].fix(18.34/ ( R_g * m.T0 )* (1/10))
-m.C_in["N2"].fix(0.90/ ( R_g * m.T0 )* (1/10))
-
-m.P0.set_value(sum(pe.value(m.C_in[:]))*10 * R_g * m.T0 )
-m.u.fix(2.14)
-
-
-# Dummy optimize function
-# model.obj = pe.Objective(expr=1) # Dummy Objective
-def Objective_rule(m):
-    return 1.0
-model.obj = pe.Objective(rule = Objective_rule) # Dummy Objective
-
-
 # dC_Zz and d2Tdz variables
 model.C_Z = pe.Var(model.z, model.r, model.SPECIES, initialize=1e-4)
+# d2Cdz2
 model.dC_Zz = dae.DerivativeVar(model.C_Z, wrt=model.z) # 6
 
 model.C_R = pe.Var(model.z, model.r, model.SPECIES, initialize=1e-4)
+# d2Cdr2
 model.dC_Rr = dae.DerivativeVar(model.C_R, wrt=model.r) # 7
 
 model.T_Z = pe.Var(model.z, model.r, initialize=1e-4)
+# d2Tdz2
 model.dT_Zz = dae.DerivativeVar(model.T_Z, wrt=model.z) # 8
 
 model.T_R = pe.Var(model.z, model.r, initialize=1e-4)
+# d2Tdr2
 model.dT_Rr = dae.DerivativeVar(model.T_R, wrt=model.r) # 9
 
 discretizer = pe.TransformationFactory('dae.collocation')
@@ -392,21 +372,6 @@ discretizer.apply_to(m, wrt=model.z, nfe=6, ncp=3, scheme='LAGRANGE-RADAU')
 # discretization for radial
 discretizer.apply_to(m, wrt=model.r, nfe=2, ncp=3, scheme='LAGRANGE-RADAU')
 
-
-m.dC_Zz_disc_eq.deactivate()
-m.dC_Rr_disc_eq.deactivate()
-
-m.dT_Zz_disc_eq.deactivate()
-m.dT_Rr_disc_eq.deactivate()
-
-
-m.P[:, :, 'H2'].setlb(1e-8)
-m.P[:, :, 'H2O'].setlb(0e-00)
-
-
-# Force the solution.
-
-m.Uf.set_value(100.0)
 
 
 def x_rule(m, z, r, s):
@@ -725,11 +690,6 @@ def u_rule(m, z):
 
 model.U_eq = pe.Constraint(model.z, rule=u_rule)
 
-
-# forget the old dCdz eqn
-m.dC_Zz_disc_eq.activate()
-m.dC_Rr_disc_eq.activate()
-
 # C_Z = dCz
 model.Def_c_Z = pe.Constraint(model.z, model.r, model.SPECIES,
                               rule=lambda m, z, r, s: m.C_Z[z, r, s] == m.dCz[z, r, s])
@@ -740,11 +700,7 @@ model.Def_c_R = pe.Constraint(model.z, model.r, model.SPECIES,
 
 dscale = 1e-05
 
-#
 
-# activate the collocation equation
-m.dT_Zz_disc_eq.activate()
-m.dT_Rr_disc_eq.activate()
 
 # T_Z = dTz
 model.Def_T_Z = pe.Constraint(model.z, model.r,
@@ -768,7 +724,7 @@ model.edC_RCp = pe.Var(model.z, model.r,
                          for s in m.SPECIES)
                      )
 
-# new dTz equation
+# ### PDE T(z, r) #############################################################
 def Def_T_PDE_rule(m, z, r):
     if r == 0 or r == m.R or z == 0 or z == m.L:
         return pe.Constraint.Skip
@@ -854,7 +810,7 @@ def dim_rule_(m, z, r, s1):
 model.def_dim_ = pe.Constraint(model.z, model.r, model.SPECIES, rule=dim_rule_)
 
 
-#-=-##-=-#-
+#-=-##-=-#- Z direction diffusion
 model.Diez_ = pe.Var(model.z, model.r, model.SPECIES, bounds=(0, None), initialize=1)
 #-=-##-=-#-
 
@@ -865,6 +821,7 @@ def diez_rule(m, z, r, s1):
 
 model.def_diez_ = pe.Constraint(model.z, model.r, model.SPECIES, rule=diez_rule)
 
+# ### PDE C(z, r) #############################################################
 def Def_C_PDE_rule(m, z, r, c):
     if r == 0 or r == m.R or z == 0 or z == m.L:
         return pe.Constraint.Skip
@@ -963,6 +920,21 @@ def def_bc_R_RR(m, z): # 9
         return (m.lambda_g[z, m.R]*m.T_R[z, m.R] == m.U[z] * (Tw - m.T[z, m.R]))
 model.bc_T_R_r = pe.Constraint(model.z, rule=def_bc_R_RR)
 
+m.C_in["CH4"].set_value(5.46/ ( R_g * m.T0 )* (1/10))
+m.C_in["CO"].set_value(0/(R_g*m.T0)*(1/10))
+m.C_in["CO2"].set_value(0.31/ ( R_g * m.T0 )* (1/10))
+m.C_in["H2"].set_value(0.68/ ( R_g * m.T0)* (1/10))
+m.C_in["H2O"].set_value(18.34/ ( R_g * m.T0 )* (1/10))
+m.C_in["N2"].set_value(0.90/ ( R_g * m.T0 )* (1/10))
+
+m.P0.set_value(sum(pe.value(m.C_in[:]))*10 * R_g * m.T0 )
+m.u.fix(2.14)
+
+# Dummy optimize function
+# model.obj = pe.Objective(expr=1) # Dummy Objective
+def Objective_rule(m):
+    return 1.0
+model.obj = pe.Objective(rule = Objective_rule) # Dummy Objective
 
 with open("ipopt.opt", "w") as f:
     f.write("start_with_resto\tyes\n")
