@@ -168,22 +168,34 @@ model.dTr = dae.DerivativeVar(model.T, wrt=model.r) # 5
 
 # kmol*bar^(1/2)/(kgcat*hr) rate constant of reaction 1
 def defk1_rule(m, z, r):
-    return m.k1[z, r] == A_rxn[1]*pe.exp(-E1/(R_g*m.T[z, r]))
+    if r == 0 or r == m.R or z == 0 or z == m.L:
+        return pe.Constraint.Skip
+    else:
+        return m.k1[z, r] == A_rxn[1]*pe.exp(-E1/(R_g*m.T[z, r]))
 model.defk1 = pe.Constraint(model.z, model.r, rule = defk1_rule)
 
 # kmol/(bar* kgcat*hr) rate constant of reaction 2
 def defk2_rule(m, z, r):
-    return m.k2[z, r] == A_rxn[2]*pe.exp(-E2/(R_g*m.T[z, r]))
+    if r == 0 or r == m.R or z == 0 or z == m.L:
+        return pe.Constraint.Skip
+    else:
+        return m.k2[z, r] == A_rxn[2]*pe.exp(-E2/(R_g*m.T[z, r]))
 model.defk2 = pe.Constraint(model.z, model.r, rule = defk2_rule)
 
 # kmol*bar^(1/2)/(kgcat*hr) rate constant of reaction 3
 def defk3_rule(m, z, r):
-    return m.k3[z, r] == A_rxn[3]*pe.exp(-E3/(R_g*m.T[z, r]))
+    if r == 0 or r == m.R or z == 0 or z == m.L:
+        return pe.Constraint.Skip
+    else:
+        return m.k3[z, r] == A_rxn[3]*pe.exp(-E3/(R_g*m.T[z, r]))
 model.defk3 = pe.Constraint(model.z, model.r, rule = defk3_rule)
 
 # rate equilibrium constant
 def defKe_rule(m, z, r, k):
-    return pe.log(m.Ke[z, r, k] / A_eq[k]) == (-dHr[k]/(R_g* m.T[z, r]))
+    if r == 0 or r == m.R or z == 0 or z == m.L:
+        return pe.Constraint.Skip
+    else:
+        return pe.log(m.Ke[z, r, k] / A_eq[k]) == (-dHr[k]/(R_g* m.T[z, r]))
 model.defKe = pe.Constraint(model.z, model.r, model.REACTIONS,
                             rule=defKe_rule)
 
@@ -194,8 +206,11 @@ model.logKa = pe.Var(model.z, model.r, model.SPECIES, initialize=1e-3)
 def deflogKa_rule(m, z, r, s):
     if s == 'CO2' or s == 'N2':
         return pe.Constraint.Skip
-    #return pe.log(m.Ka[z, r, s] / AKa[s])== (-dHa[s]/(R_g*m.T[z, r]))
-    return m.logKa[z, r, s] == (-dHa[s]/(R_g*m.T[z, r]))
+    else:
+        if r == 0 or r == m.R or z == 0 or z == m.L:
+            return pe.Constraint.Skip
+        else:
+            return m.logKa[z, r, s] == (-dHa[s]/(R_g*m.T[z, r]))
 
 model.deflogKa = pe.Constraint(model.z, model.r, model.SPECIES, rule=deflogKa_rule)
 
@@ -203,8 +218,11 @@ model.deflogKa = pe.Constraint(model.z, model.r, model.SPECIES, rule=deflogKa_ru
 def defKa_rule(m, z, r, s):
     if s == 'CO2' or s == 'N2':
         return pe.Constraint.Skip
-    #return pe.log(m.Ka[z, r, s] / AKa[s])== (-dHa[s]/(R_g*m.T[z, r]))
-    return m.Ka[z, r, s]/AKa[s] == pe.exp(m.logKa[z, r, s])
+    else:
+        if r == 0 or r == m.R or z == 0 or z == m.L:
+            return pe.Constraint.Skip
+        else:
+            return m.Ka[z, r, s]/AKa[s] == pe.exp(m.logKa[z, r, s])
 
 model.defKa = pe.Constraint(model.z, model.r, model.SPECIES, rule=defKa_rule)
 
@@ -247,84 +265,122 @@ model.Def_friction= pe.Constraint(rule = Def_friction_rule)
 # total pressure of pcl = nondementionalized pressure of
 #pcl * Initial pressure of pcl, here y = P0/P
 def Pressure_nondim_rule(m, z, r):
-    return m.Pt[z, r] == m.y[z, r] * m.P0
+    if r == 0 or r == m.R or z == 0 or z == m.L:
+        return pe.Constraint.Skip
+    else:
+        return m.Pt[z, r] == m.y[z, r] * m.P0
 model.Pressure_nondimensionalize = pe.Constraint(model.z, model.r,
                                                  rule=Pressure_nondim_rule)
 
 def Total_Flow_rule(m,z, r): # total flow rate is sum of single species flow rate
-    return m.Ft[z, r] == sum(m.F[z, r, s] for s in model.SPECIES)
+    if z == 0 or z == m.L or r == 0:
+        return pe.Constraint.Skip
+    else:
+        return m.Ft[z, r] == sum(m.F[z, r, s] for s in model.SPECIES)
 model.Total_Flow = pe.Constraint(model.z, model.r, rule = Total_Flow_rule)
 
 def Patial_pressure_rule(m, z, r, s):  # patial pressure
-    #return m.P[z, r,s] == m.F[z,r,s] / m.Ft[z, r] * m.Pt[z, r]
-    return m.P[z, r, s] * m.Ft[z, r] == m.F[z, r,s] * m.Pt[z, r]
+    if r == 0 or r == m.R or z == 0 or z == m.L:
+        return pe.Constraint.Skip
+    else:
+        return m.P[z, r, s] * m.Ft[z, r] == m.F[z, r,s] * m.Pt[z, r]
 model.Patial_pressure = pe.Constraint(model.z, model.r, model.SPECIES,
                                       rule=Patial_pressure_rule)
 # define DEN (for rate functions)
 def Def_DEN_rule(m, z, r):
-    return m.DEN[z, r] * m.P[z, r,'H2'] == m.P[z, r,'H2'] \
-    + m.Ka[z, r,'CO']*m.P[z, r,'CO'] * m.P[z, r,'H2'] \
-    + m.Ka[z, r,'CH4']*m.P[z, r, 'CH4'] * m.P[z, r, 'H2'] \
-    + m.Ka[z, r, 'H2']*m.P[z, r, 'H2'] * m.P[z, r, 'H2'] \
-    + m.Ka[z, r, 'H2O']*m.P[z, r, 'H2O']
+    if r == 0 or r == m.R or z == 0 or z == m.L:
+        return pe.Constraint.Skip
+    else:
+        return m.DEN[z, r] * m.P[z, r,'H2'] == m.P[z, r,'H2'] \
+            + m.Ka[z, r,'CO']*m.P[z, r,'CO'] * m.P[z, r,'H2'] \
+            + m.Ka[z, r,'CH4']*m.P[z, r, 'CH4'] * m.P[z, r, 'H2'] \
+            + m.Ka[z, r, 'H2']*m.P[z, r, 'H2'] * m.P[z, r, 'H2'] \
+            + m.Ka[z, r, 'H2O']*m.P[z, r, 'H2O']
 model.Def_DEN = pe.Constraint(model.z, model.r, rule=Def_DEN_rule)
 
 # kmol/(kgcat*s) rate law for reaction 1
 def Def_Rate1_rule(m,z, r):
-    return m.Rate[z, r, 1] == \
-        (m.k1[z, r] / (pow(m.P[z, r,'H2'],2.5)*m.DEN[z, r]**2)) \
-        *(m.P[z, r,'CH4']*m.P[z, r,'H2O'] \
-           - pow(m.P[z, r,'H2'], 3) * m.P[z, r,'CO']/m.Ke[z, r, 1])*(1/3600)
+    if r == 0 or r == m.R or z == 0 or z == m.L:
+        return pe.Constraint.Skip
+    else:
+        return m.Rate[z, r, 1] == \
+            (m.k1[z, r] / (pow(m.P[z, r,'H2'],2.5)*m.DEN[z, r]**2)) \
+            *(m.P[z, r,'CH4']*m.P[z, r,'H2O'] \
+               - pow(m.P[z, r,'H2'], 3) * m.P[z, r,'CO']/m.Ke[z, r, 1])*(1/3600)
 
 model.Def_Rate1 = pe.Constraint(model.z, model.r, rule=Def_Rate1_rule)
 
 # kmol/(kgcat*s) rate law for reaction 2
 def Def_Rate2_rule(m, z, r):
-    return m.Rate[z, r, 2] == \
-        (m.k2[z, r] / (m.P[z, r, 'H2'] * m.DEN[z, r]**2)) \
-        *(m.P[z, r,'CO']*m.P[z, r,'H2O'] \
-          - m.P[z, r,'H2'] * m.P[z, r,'CO2']/m.Ke[z, r, 2])*(1/3600)
+    if r == 0 or r == m.R or z == 0 or z == m.L:
+        return pe.Constraint.Skip
+    else:
+        return m.Rate[z, r, 2] == \
+            (m.k2[z, r] / (m.P[z, r, 'H2'] * m.DEN[z, r]**2)) \
+            *(m.P[z, r,'CO']*m.P[z, r,'H2O'] \
+              - m.P[z, r,'H2'] * m.P[z, r,'CO2']/m.Ke[z, r, 2])*(1/3600)
 
 model.Def_Rate2 = pe.Constraint(model.z, model.r, rule=Def_Rate2_rule)
 
 # kmol/(kgcat*s) rate law for reaction 1
 def Def_Rate3_rule(m, z, r):
-    return m.Rate[z, r,3] == \
-        (m.k3[z, r] / (pow(m.P[z, r,'H2'],3.5) * m.DEN[z, r]**2)) \
-        *(m.P[z, r,'CH4']*m.P[z, r,'H2O']**2 \
-          - pow(m.P[z, r,'H2'],4) * m.P[z, r,'CO2']/m.Ke[z, r, 3])*(1/3600)
+    if r == 0 or r == m.R or z == 0 or z == m.L:
+        return pe.Constraint.Skip
+    else:
+        return m.Rate[z, r,3] == \
+            (m.k3[z, r] / (pow(m.P[z, r,'H2'],3.5) * m.DEN[z, r]**2)) \
+            *(m.P[z, r,'CH4']*m.P[z, r,'H2O']**2 \
+              - pow(m.P[z, r,'H2'],4) * m.P[z, r,'CO2']/m.Ke[z, r, 3])*(1/3600)
 
 model.Def_Rate3 = pe.Constraint(model.z, model.r, rule=Def_Rate3_rule)
 
 ###
 def d_r_comp_CH4(m, z, r):
-    return m.r_comp[z, r,"CH4"] == \
-        -eta_1*m.Rate[z, r, 1] - eta_3*m.Rate[z, r, 3]
+    if r == 0 or r == m.R or z == 0 or z == m.L:
+        return pe.Constraint.Skip
+    else:
+        return m.r_comp[z, r,"CH4"] == \
+            -eta_1*m.Rate[z, r, 1] - eta_3*m.Rate[z, r, 3]
 model.Def_r_comp_ch4 = pe.Constraint(model.z, model.r, rule=d_r_comp_CH4)
 
 def d_r_comp_CO(m, z, r):
-    return m.r_comp[z, r, "CO"] == \
-        eta_1*m.Rate[z, r,1] -eta_2*m.Rate[z, r, 2]
+    if r == 0 or r == m.R or z == 0 or z == m.L:
+        return pe.Constraint.Skip
+    else:
+        return m.r_comp[z, r, "CO"] == \
+            eta_1*m.Rate[z, r,1] -eta_2*m.Rate[z, r, 2]
 model.Def_r_comp_co = pe.Constraint(model.z, model.r, rule=d_r_comp_CO)
 
 def d_r_comp_CO2(m, z, r):
-    return m.r_comp[z, r, "CO2"] == \
-        eta_2*m.Rate[z, r, 2] + eta_3*m.Rate[z, r, 3]
+    if r == 0 or r == m.R or z == 0 or z == m.L:
+        return pe.Constraint.Skip
+    else:
+        return m.r_comp[z, r, "CO2"] == \
+            eta_2*m.Rate[z, r, 2] + eta_3*m.Rate[z, r, 3]
 model.Def_r_comp_co2 = pe.Constraint(model.z, model.r, rule=d_r_comp_CO2)
 
 def d_r_comp_H2(m, z, r):
-    return m.r_comp[z, r, "H2"] == \
-        3*eta_1*m.Rate[z, r,1] + eta_2*m.Rate[z, r,2] + 4*eta_3*m.Rate[z, r,3]
+    if r == 0 or r == m.R or z == 0 or z == m.L:
+        return pe.Constraint.Skip
+    else:
+        return m.r_comp[z, r, "H2"] == \
+            3*eta_1*m.Rate[z, r,1] + eta_2*m.Rate[z, r,2] + 4*eta_3*m.Rate[z, r,3]
 model.Def_r_comp_h2 = pe.Constraint(model.z, model.r, rule=d_r_comp_H2)
 
 def d_r_comp_H2O(m, z, r):
-    return m.r_comp[z, r, "H2O"] == \
-        -eta_1*m.Rate[z, r, 1] - eta_2*m.Rate[z, r,2] - 2*eta_3*m.Rate[z, r, 3]
+    if r == 0 or r == m.R or z == 0 or z == m.L:
+        return pe.Constraint.Skip
+    else:
+        return m.r_comp[z, r, "H2O"] == \
+            -eta_1*m.Rate[z, r, 1] - eta_2*m.Rate[z, r,2] - 2*eta_3*m.Rate[z, r, 3]
 model.Def_r_comp_h2o = pe.Constraint(model.z, model.r, rule=d_r_comp_H2O)
 
 
 def d_r_comp_N2(m, z, r):
-    return m.r_comp[z, r, "N2"] == 0.0
+    if r == 0 or r == m.R or z == 0 or z == m.L:
+        return pe.Constraint.Skip
+    else:
+        return m.r_comp[z, r, "N2"] == 0.0
 model.Def_r_comp_n2 = pe.Constraint(model.z, model.r, rule=d_r_comp_N2)
 
 
@@ -339,7 +395,10 @@ model.Def_dy = pe.Constraint(model.z, model.r, rule=Def_dy_rule)
 # u is in m / s
 
 def def_fi(m, z, r, c):  # kmol h^-1
-    return m.F[z, r, c] == m.C[z, r, c] * m.u * (3.14*d_t_in**2/4)*3600
+    if z == 0 or z == m.L or r == 0:
+        return pe.Constraint.Skip
+    else:
+        return m.F[z, r, c] == m.C[z, r, c] * m.u * (3.14*d_t_in**2/4)*3600
 model.Def_fi = pe.Constraint(model.z, model.r, model.SPECIES, rule=def_fi)
 
 
@@ -369,12 +428,14 @@ discretizer = pe.TransformationFactory('dae.collocation')
 # discretization for axial
 discretizer.apply_to(m, wrt=model.z, nfe=6, ncp=3, scheme='LAGRANGE-RADAU')
 # discretization for radial
-discretizer.apply_to(m, wrt=model.r, nfe=2, ncp=3, scheme='LAGRANGE-RADAU')
-
+discretizer.apply_to(m, wrt=model.r, nfe=3, ncp=3, scheme='LAGRANGE-LEGENDRE')
 
 
 def x_rule(m, z, r, s):
-    return m.X[z, r, s] * m.Ft[z, r] == m.F[z, r, s]
+    if z == 0 or z == m.L or r == 0:
+        return pe.Constraint.Skip
+    else:
+        return m.X[z, r, s] * m.Ft[z, r] == m.F[z, r, s]
 model.x_eq = pe.Constraint(model.z, model.r, model.SPECIES, rule=x_rule)
 
 A_lambda = {}
@@ -407,8 +468,11 @@ model.lambda_i = pe.Var(model.z, model.r, model.SPECIES,
                                                        C_lambda[s]*m.T0**2))
 
 def lambda_i_rule(m, z, r, s):
-    return m.lambda_i[z, r, s] == A_lambda[s] + B_lambda[s] * m.T[z, r] \
-        + C_lambda[s] * m.T[z, r]**2
+    if z == 0 or z == m.L or r == 0:
+        return pe.Constraint.Skip
+    else:
+        return m.lambda_i[z, r, s] == A_lambda[s] + B_lambda[s] * m.T[z, r] \
+            + C_lambda[s] * m.T[z, r]**2
 model.lamda_i_eq = pe.Constraint(model.z, model.r, model.SPECIES, rule=lambda_i_rule)
 
 
@@ -495,9 +559,12 @@ model.lambda_tr = pe.Var(model.z, model.r, model.SPECIES, model.SPECIES,
 
 # C6
 def lambda_tr_rule(m, z, r, i, j):
-    return m.lambda_tr[z, r, i, j] == \
-        Gamma[j]*(pe.exp(0.0464*m.T[z, r]/Tc[i]) -
-                  pe.exp(-0.2412*m.T[z, r]/Tc[i]))/(Gamma[i]*(pe.exp(0.0464*m.T[z, r]/Tc[j]) - pe.exp(-0.2412*m.T[z, r]/Tc[j])))
+    if z == 0 or z == m.L or r == 0:
+        return pe.Constraint.Skip
+    else:
+        return m.lambda_tr[z, r, i, j] == \
+            Gamma[j]*(pe.exp(0.0464*m.T[z, r]/Tc[i]) -
+                      pe.exp(-0.2412*m.T[z, r]/Tc[i]))/(Gamma[i]*(pe.exp(0.0464*m.T[z, r]/Tc[j]) - pe.exp(-0.2412*m.T[z, r]/Tc[j])))
 
 model.lambda_tr_eq = pe.Constraint(model.z, model.r,
                                    model.SPECIES, model.SPECIES,
@@ -509,8 +576,11 @@ model.A_lambda_ij = pe.Var(model.z, model.r, model.SPECIES, model.SPECIES,
 
 # C5
 def A_lambda_ij_rule(m, z, r, s1, s2):
-    return m.A_lambda_ij[z, r, s1, s2] == \
-        ((1 + pe.sqrt(m.lambda_tr[z, r, s1, s2])*phi[s1, s2]**(-0.5))**2)/pe.sqrt(8 * (1 + phi[s1,s2]**-2))
+    if z == 0 or z == m.L or r == 0:
+        return pe.Constraint.Skip
+    else:
+        return m.A_lambda_ij[z, r, s1, s2] == \
+            ((1 + pe.sqrt(m.lambda_tr[z, r, s1, s2])*phi[s1, s2]**(-0.5))**2)/pe.sqrt(8 * (1 + phi[s1,s2]**-2))
 
 model.A_lambda_ij_e = pe.Constraint(model.z, model.r,
                                     model.SPECIES, model.SPECIES,
@@ -523,8 +593,11 @@ model.lg_den = pe.Var(model.z, model.r, model.SPECIES, initialize=1.1)
 
 # (for C4)
 def lg_den_rule(m, z, r, s):
-    return m.lg_den[z, r, s] == sum(m.X[z, r, s1]*m.A_lambda_ij[z, r, s, s1]
-                                    for s1 in m.SPECIES)
+    if z == 0 or z == m.L or r == 0:
+        return pe.Constraint.Skip
+    else:
+        return m.lg_den[z, r, s] == sum(m.X[z, r, s1]*m.A_lambda_ij[z, r, s, s1]
+                                        for s1 in m.SPECIES)
 
 model.lg_den_eq = pe.Constraint(model.z, model.r, model.SPECIES, rule=lg_den_rule)
 
@@ -533,8 +606,11 @@ model.lambda_g = pe.Var(model.z, model.r, initialize=1.1)
 
 # C4
 def lambda_g_rule(m, z, r):
-    return m.lambda_g[z, r] == \
-        sum(m.X[z, r, s]*m.lambda_i[z, r, s]/m.lg_den[z, r, s] for s in m.SPECIES)
+    if z == 0 or z == m.L or r == 0:
+        return pe.Constraint.Skip
+    else:
+        return m.lambda_g[z, r] == \
+            sum(m.X[z, r, s]*m.lambda_i[z, r, s]/m.lg_den[z, r, s] for s in m.SPECIES)
 
 model.lambda_g_eq = pe.Constraint(model.z, model.r, rule=lambda_g_rule)
 
@@ -616,7 +692,11 @@ model.mu_i = pe.Var(model.z, model.r, model.SPECIES, bounds=(0.0, None),
                                                   C_mu[s]*m.T0**2))
 
 def mu_i_rule(m, z, r, s):
-    return m.mu_i[z, r, s] == A_mu[s] + B_mu[s] * m.T[z, r] + C_mu[s] * m.T[z, r]**2
+    if z == 0 or z == m.L or r == 0:
+        return pe.Constraint.Skip
+    else:
+        return m.mu_i[z, r, s] == A_mu[s] + B_mu[s] * m.T[z, r] \
+            + C_mu[s] * m.T[z, r]**2
 model.mu_i_eq = pe.Constraint(model.z, model.r, model.SPECIES, rule=mu_i_rule)
 
 x0f = 1/len(model.SPECIES)
@@ -626,15 +706,21 @@ model.mu_den = pe.Var(model.z, model.r, model.SPECIES,
 
 
 def mu_d_rule(m, z, r, s):
-    return m.mu_den[z, r, s] == sum(m.X[z, r, s1]*phi[s,s1] for s1 in m.SPECIES)
+    if z == 0 or z == m.L or r == 0:
+        return pe.Constraint.Skip
+    else:
+        return m.mu_den[z, r, s] == sum(m.X[z, r, s1]*phi[s,s1] for s1 in m.SPECIES)
 model.mu_den_eq = pe.Constraint(model.z, model.r, model.SPECIES, rule=mu_d_rule)
 
 
 model.mu = pe.Var(model.z, model.r, bounds=(0, None))
 
 def mu_rule(m, z, r):
-    return m.mu[z, r] == sum(m.X[z, r, s]*m.mu_i[z, r, s]/m.mu_den[z, r, s]
-                             for s in m.SPECIES)
+    if z == 0 or z == m.L or r == 0:
+        return pe.Constraint.Skip
+    else:
+        return m.mu[z, r] == sum(m.X[z, r, s]*m.mu_i[z, r, s]/m.mu_den[z, r, s]
+                                 for s in m.SPECIES)
 
 model.mu_eq = pe.Constraint(model.z, model.r, rule=mu_rule)
 #
@@ -646,11 +732,14 @@ model.CP_i = pe.Var(model.z, model.r, model.SPECIES,
 
 # component heat capacity  [J kg-1 K-1]
 def cp_i_rule(m, z, r, s):
-    return m.CP_i[z, r, s] == (A_cp[s]
-                            + B_cp[s]*m.T[z, r]
-                            + C_cp[s]*m.T[z, r]**2
-                            + D_cp[s]*m.T[z, r]**3
-                            + E_cp[s]*m.T[z, r]**4) * (1000/MV[s])
+    if z == 0 or z == m.L or r == 0:
+        return pe.Constraint.Skip
+    else:
+        return m.CP_i[z, r, s] == (A_cp[s]
+                                + B_cp[s]*m.T[z, r]
+                                + C_cp[s]*m.T[z, r]**2
+                                + D_cp[s]*m.T[z, r]**3
+                                + E_cp[s]*m.T[z, r]**4) * (1000/MV[s])
 
 model.CPi_eq = pe.Constraint(model.z, model.r, model.SPECIES, rule=cp_i_rule)
 
@@ -658,7 +747,10 @@ model.CP_g = pe.Var(model.z, model.r, bounds=(0, None))
 
 # heat capacity of gas mixture
 def cp_g_rule(m, z, r):
-    return m.CP_g[z, r] == sum(m.X[z, r, s] * m.CP_i[z, r, s] for s in m.SPECIES)
+    if z == 0 or z == m.L or r == 0:
+        return pe.Constraint.Skip
+    else:
+        return m.CP_g[z, r] == sum(m.X[z, r, s] * m.CP_i[z, r, s] for s in m.SPECIES)
 model.CP_g_eq = pe.Constraint(model.z, model.r, rule=cp_g_rule)
 
 #
@@ -666,7 +758,10 @@ model.Re = pe.Var(model.z, bounds=(0, None))
 
 # this is only axial
 def re_rule(m, z):
-    return m.Re[z] == 1e7 * d_p * rho_g * m.u / m.mu[z, 0]
+    if z == 0 or z == m.L:
+        return pe.Constraint.Skip
+    else:
+        return m.Re[z] == 1e7 * d_p * rho_g * m.u / m.mu[z, m.R]
 model.Re_eq = pe.Constraint(model.z, rule=re_rule)
 
 
@@ -675,7 +770,11 @@ model.Pr = pe.Var(model.z, bounds=(0, None))
 
 
 def pr_rule(m, z):
-    return m.Pr[z] == 1e-7 * m.CP_g[z, 0] * m.mu[z, 0] / m.lambda_g[z, 0]
+    if z == 0 or z == m.L:
+        return pe.Constraint.Skip
+    else:
+        return m.Pr[z] == \
+            1e-7 * m.CP_g[z, m.R] * m.mu[z, m.R] / m.lambda_g[z, m.R]
 model.Pr_eq = pe.Constraint(model.z, rule=pr_rule)
 
 
@@ -683,9 +782,12 @@ model.U = pe.Var(model.z, bounds=(0, None))
 
 # only in the z, 0
 def u_rule(m, z):
-    return m.U[z] == \
-        0.4*(m.lambda_g[z, 0]/d_p)*(2.58*(m.Re[z]**0.333)*(m.Pr[z]**0.333)\
-                                 +0.094*(m.Re[z]**0.8)*(m.Pr[z]**0.4))
+    if z == 0 or z == m.L:
+        return pe.Constraint.Skip
+    else:
+        return m.U[z] == \
+            0.4*(m.lambda_g[z, m.R]/d_p)*(2.58*(m.Re[z]**0.333)*(m.Pr[z]**0.333)\
+                                     +0.094*(m.Re[z]**0.8)*(m.Pr[z]**0.4))
 
 model.U_eq = pe.Constraint(model.z, rule=u_rule)
 
@@ -771,11 +873,14 @@ model.omegaD = pe.Var(model.z, model.r, model.SPECIES, model.SPECIES,
 
 
 def omega_d_rule(m, z, r, s1, s2):
-    return m.omegaD[z, r, s1, s2] == \
-    1.06036/(m.T[z, r]*pe.sqrt(epsik[s1]*epsik[s2]))**0.1561 \
-    + 0.19300/pe.exp(0.47635*m.T[z, r]/pe.sqrt(epsik[s1]*epsik[s2])) \
-    + 1.03587/pe.exp(1.52996*m.T[z, r]/pe.sqrt(epsik[s1]*epsik[s2])) \
-    + 1.76474/pe.exp(3.89411*m.T[z, r]/pe.sqrt(epsik[s1]*epsik[s2]))
+    if r == 0 or r == m.R or z == 0 or z == m.L:
+        return pe.Constraint.Skip
+    else:
+        return m.omegaD[z, r, s1, s2] == \
+        1.06036/(m.T[z, r]*pe.sqrt(epsik[s1]*epsik[s2]))**0.1561 \
+        + 0.19300/pe.exp(0.47635*m.T[z, r]/pe.sqrt(epsik[s1]*epsik[s2])) \
+        + 1.03587/pe.exp(1.52996*m.T[z, r]/pe.sqrt(epsik[s1]*epsik[s2])) \
+        + 1.76474/pe.exp(3.89411*m.T[z, r]/pe.sqrt(epsik[s1]*epsik[s2]))
 
 model.def_omegad = pe.Constraint(model.z, model.r, model.SPECIES, model.SPECIES,
                                  rule=omega_d_rule)
@@ -788,10 +893,13 @@ model.Dij_ = pe.Var(model.z, model.r, model.SPECIES, model.SPECIES, bounds=(0, N
 
 
 def dij_f_rule(m, z, r, s1, s2):
-    return m.Dij_[z, r, s1, s2] == \
-        (0.00266*m.T[z, r]**(3/2))/(m.Pt[z, r] \
-                                 *pe.sqrt(MV_ij[s1, s2]) \
-                                 *(sigma_ij[s1, s2]**2)*m.omegaD[z, r, s1, s2])
+    if r == 0 or r == m.R or z == 0 or z == m.L:
+        return pe.Constraint.Skip
+    else:
+        return m.Dij_[z, r, s1, s2] == \
+            (0.00266*m.T[z, r]**(3/2))/(m.Pt[z, r] \
+                                     *pe.sqrt(MV_ij[s1, s2]) \
+                                     *(sigma_ij[s1, s2]**2)*m.omegaD[z, r, s1, s2])
 
 model.def_dij = pe.Constraint(model.z, model.r, model.SPECIES, model.SPECIES,
                               rule=dij_f_rule)
@@ -803,8 +911,11 @@ model.Dim_ = pe.Var(model.z, model.r, model.SPECIES, bounds = (0, None), initial
 #-=-##-=-#
 
 def dim_rule_(m, z, r, s1):
-    return model.Dim_[z, r, s1] == sum(m.X[z, r, s2]/m.Dij_[z, r, s1, s2] for s2 in
-                             model.SPECIES if s2 != s1)
+    if r == 0 or r == m.R or z == 0 or z == m.L:
+        return pe.Constraint.Skip
+    else:
+        return model.Dim_[z, r, s1] == sum(m.X[z, r, s2]/m.Dij_[z, r, s1, s2] for s2 in
+                                 model.SPECIES if s2 != s1)
 
 model.def_dim_ = pe.Constraint(model.z, model.r, model.SPECIES, rule=dim_rule_)
 
@@ -815,8 +926,11 @@ model.Diez_ = pe.Var(model.z, model.r, model.SPECIES, bounds=(0, None), initiali
 
 
 def diez_rule(m, z, r, s1):
-    return model.Diez_[z, r, s1] == 0.78*model.Dim_[z, r, s1] + \
-        (0.54*model.u*d_cata/eb)/(1 + 9.2*model.Dim_[z, r,s1]/(model.u*d_cata/eb))
+    if r == 0 or r == m.R or z == 0 or z == m.L:
+        return pe.Constraint.Skip
+    else:
+        return model.Diez_[z, r, s1] == 0.78*model.Dim_[z, r, s1] + \
+            (0.54*model.u*d_cata/eb)/(1 + 9.2*model.Dim_[z, r,s1]/(model.u*d_cata/eb))
 
 model.def_diez_ = pe.Constraint(model.z, model.r, model.SPECIES, rule=diez_rule)
 

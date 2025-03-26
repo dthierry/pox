@@ -2,9 +2,9 @@ from pyomo.environ import *
 import numpy as np
 
 
-def save_m5_state(m):
+def save_m5_state(m, m2=False):
     Zs = m.z
-    Rs = m.r
+    Rs = [1] if m2 else m.r
     Ss = m.SPECIES
     Rxs = m.REACTIONS
 
@@ -79,72 +79,96 @@ def save_m5_state(m):
     for z in range(len(Zs)):
         for r in range(len(Rs)):
             for s in range(len(Ss)):
-                (i0, i1, i2) = (Zs.at(z+1), Rs.at(r+1), Ss.at(s+1))
-                F[z, r, s] = value(m.F[i0, i1, i2])
-                C[z, r, s] = value(m.C[i0, i1, i2])
-                X[z, r, s] = value(m.X[i0, i1, i2])
-                P[z, r, s] = value(m.P[i0, i1, i2])
-                r_comp[z, r, s] = value(m.r_comp[i0, i1, i2])
-                Ka[z, r, s] = value(m.Ka[i0, i1, i2])
-                dCz[z, r, s] = value(m.dCz[i0, i1, i2])
-                dCr[z, r, s] = value(m.dCr[i0, i1, i2])
-                logKa[z, r, s] = value(m.logKa[i0, i1, i2])
-                C_Z[z, r, s] = value(m.C_Z[i0, i1, i2])
-                C_R[z, r, s] = value(m.C_R[i0, i1, i2])
-                if not(m.dC_Rr[i0, i1, i2].stale):
-                    dC_Rr[z, r, s] = value(m.dC_Rr[i0, i1, i2])
-                lambda_i[z, r, s] = value(m.lambda_i[i0, i1, i2])
-                lg_den[z, r, s] = value(m.lg_den[i0, i1, i2])
-                mu_i[z, r, s] = value(m.mu_i[i0, i1, i2])
-                mu_den[z, r, s] = value(m.mu_den[i0, i1, i2])
-                CP_i[z, r, s] = value(m.CP_i[i0, i1, i2])
-                Dim_[z, r, s] = value(m.Dim_[i0, i1, i2])
-                Diez_[z, r, s] = value(m.Diez_[i0, i1, i2])
+                if m2:
+                    three_idx = (Zs.at(z+1), Ss.at(s+1))
+                else:
+                    three_idx = (Zs.at(z+1), Rs.at(r+1), Ss.at(s+1))
+                F[z, r, s] = value(m.F[three_idx])
+                C[z, r, s] = value(m.C[three_idx])
+                X[z, r, s] = value(m.X[three_idx])
+                P[z, r, s] = value(m.P[three_idx])
+                r_comp[z, r, s] = value(m.r_comp[three_idx])
+                Ka[z, r, s] = value(m.Ka[three_idx])
+                dCz[z, r, s] = value(m.dCz[three_idx])
+                if not m2:
+                    dCr[z, r, s] = value(m.dCr[three_idx])
+                logKa[z, r, s] = value(m.logKa[three_idx])
+                C_Z[z, r, s] = value(m.C_Z[three_idx])
+                if not m2:
+                    C_R[z, r, s] = value(m.C_R[three_idx])
+                    if not(m.dC_Rr[three_idx].stale):
+                        dC_Rr[z, r, s] = value(m.dC_Rr[three_idx])
+                lambda_i[z, r, s] = value(m.lambda_i[three_idx])
+                lg_den[z, r, s] = value(m.lg_den[three_idx])
+                mu_i[z, r, s] = value(m.mu_i[three_idx])
+                mu_den[z, r, s] = value(m.mu_den[three_idx])
+                CP_i[z, r, s] = value(m.CP_i[three_idx])
+                Dim_[z, r, s] = value(m.Dim_[three_idx])
+                Diez_[z, r, s] = value(m.Diez_[three_idx])
 
     for z in range(len(Zs)):
         for r in range(len(Rs)):
-            (i0, i1) = (Zs.at(z+1), Rs.at(r+1))
-            y[z, r] = value(m.y[i0, i1])
-            Pt[z, r] = value(m.Pt[i0, i1])
-            T[z, r] = value(m.T[i0, i1])
-            Ft[z, r] = value(m.Ft[i0, i1])
-            DEN[z, r] = value(m.DEN[i0, i1])
-            k1[z, r] = value(m.k1[i0, i1])
-            k2[z, r] = value(m.k2[i0, i1])
-            k3[z, r] = value(m.k3[i0, i1])
-            if not(m.dy[i0, i1].stale):
-                dy[z, r] = value(m.dy[i0, i1])
-            dTz[z, r] = value(m.dTz[i0, i1])
-            dTr[z, r] = value(m.dTr[i0, i1])
-            T_Z[z, r] = value(m.T_Z[i0, i1])
-            if not(m.dT_Zz[i0, i1].stale):
-                dT_Zz[z, r] = value(m.dT_Zz[i0, i1])
-            T_R[z, r] = value(m.T_Z[i0, i1])
-            if not(m.dT_Rr[i0, i1].stale):
-                dT_Rr[z, r] = value(m.dT_Rr[i0, i1])
-            lambda_g[z, r] = value(m.lambda_g[i0, i1])
-            mu[z, r] = value(m.mu[i0, i1])
-            CP_g[z, r] = value(m.CP_g[i0, i1])
-            edC_ZCp[z, r] = value(m.edC_ZCp[i0, i1])
-            edC_RCp[z, r] = value(m.edC_RCp[i0, i1])
+            if m2:
+                two_idx_0 = (Zs.at(z+1),)
+            else:
+                two_idx_0 = (Zs.at(z+1), Rs.at(r+1))
+            y[z, r] = value(m.y[two_idx_0])
+            Pt[z, r] = value(m.Pt[two_idx_0])
+            T[z, r] = value(m.T[two_idx_0])
+            Ft[z, r] = value(m.Ft[two_idx_0])
+            DEN[z, r] = value(m.DEN[two_idx_0])
+            k1[z, r] = value(m.k1[two_idx_0])
+            k2[z, r] = value(m.k2[two_idx_0])
+            k3[z, r] = value(m.k3[two_idx_0])
+            if not(m.dy[two_idx_0].stale):
+                dy[z, r] = value(m.dy[two_idx_0])
+            dTz[z, r] = value(m.dTz[two_idx_0])
+            if not m2:
+                dTr[z, r] = value(m.dTr[two_idx_0])
+            T_Z[z, r] = value(m.T_Z[two_idx_0])
+            if not(m.dT_Zz[two_idx_0].stale):
+                dT_Zz[z, r] = value(m.dT_Zz[two_idx_0])
+            if not m2:
+                T_R[z, r] = value(m.T_Z[two_idx_0])
+                if not(m.dT_Rr[two_idx_0].stale):
+                    dT_Rr[z, r] = value(m.dT_Rr[two_idx_0])
+            lambda_g[z, r] = value(m.lambda_g[two_idx_0])
+            mu[z, r] = value(m.mu[two_idx_0])
+            CP_g[z, r] = value(m.CP_g[two_idx_0])
+            edC_ZCp[z, r] = value(m.edC_ZCp[two_idx_0])
+            if not m2:
+                edC_RCp[z, r] = value(m.edC_RCp[two_idx_0])
 
     for z in range(len(Zs)):
         for r in range(len(Rs)):
             for s in range(len(Rxs)):
-                (i0, i1, i2) = (Zs.at(z+1), Rs.at(r+1), Rxs.at(s+1))
-                Rate[z, r, s] = value(m.Rate[i0, i1, i2])
-                Ke[z, r, s] = value(m.Ke[i0, i1, i2])
+                if m2:
+                    three_idx_r = (Zs.at(z+1), Rxs.at(s+1))
+                else:
+                    three_idx_r = (Zs.at(z+1), Rs.at(r+1), Rxs.at(s+1))
+                Rate[z, r, s] = value(m.Rate[three_idx_r])
+                Ke[z, r, s] = value(m.Ke[three_idx_r])
 
 
     for z in range(len(Zs)):
         for r in range(len(Rs)):
             for s0 in range(len(Ss)):
                 for s1 in range(len(Ss)):
-                    (i0, i1, i2, i3) = (Zs.at(z+1), Rs.at(r+1), Ss.at(s0+1), Ss.at(s1+1))
-                    lambda_tr[z, r, s0, s1] = value(m.lambda_tr[i0, i1, i2, i3])
-                    A_lambda_ij[z, r, s0, s1] = value(m.A_lambda_ij[i0, i1, i2, i3])
-                    omegaD[z, r, s0, s1] = value(m.omegaD[i0, i1, i2, i3])
-                    Dij_[z, r, s0, s1] = value(m.Dij_[i0, i1, i2, i3])
+                    if m2:
+                        four_idx_1 = (Zs.at(z+1), Ss.at(s0+1), Ss.at(s1+1))
+                    else:
+                        four_idx_1 = (Zs.at(z+1), Rs.at(r+1), Ss.at(s0+1), Ss.at(s1+1))
+                    lambda_tr[z, r, s0, s1] = value(m.lambda_tr[four_idx_1])
+                    A_lambda_ij[z, r, s0, s1] = value(m.A_lambda_ij[four_idx_1])
+                    omegaD[z, r, s0, s1] = value(m.omegaD[four_idx_1])
+                    Dij_[z, r, s0, s1] = value(m.Dij_[four_idx_1])
+
+    for z in range(len(Zs)):
+        idx = Zs.at(z+1)
+        Re[z] = value(m.Re[idx])
+        Pr[z] = value(m.Pr[idx])
+        U[z] = value(m.U[idx])
+
     # save arrays
     np.save("F_in.npy", F_in)
     np.save("C_in.npy", C_in)
@@ -204,7 +228,7 @@ def save_m5_state(m):
     np.save("Diez_.npy", Diez_)
 
 
-def load_m5_state(m):
+def load_m5_state(m, m2=False):
     Zs = m.z
     Rs = m.r
     Ss = m.SPECIES
@@ -281,73 +305,80 @@ def load_m5_state(m):
 
     for z in range(len(Zs)):
         for r in range(len(Rs)):
+            r_ = 0 if m2 else r
             for s in range(len(Ss)):
                 (i0, i1, i2) = (Zs.at(z+1), Rs.at(r+1), Ss.at(s+1))
-                m.F[i0, i1, i2].set_value(F[z, r, s])
-                m.C[i0, i1, i2].set_value(C[z, r, s])
-                m.X[i0, i1, i2].set_value(X[z, r, s])
-                m.P[i0, i1, i2].set_value(P[z, r, s])
-                m.r_comp[i0, i1, i2].set_value(r_comp[z, r, s])
-                m.Ka[i0, i1, i2].set_value(Ka[z, r, s])
-                m.dCz[i0, i1, i2].set_value(dCz[z, r, s])
-                m.dCr[i0, i1, i2].set_value(dCr[z, r, s])
-                m.logKa[i0, i1, i2].set_value(logKa[z, r, s])
-                m.C_Z[i0, i1, i2].set_value(C_Z[z, r, s])
-                m.C_R[i0, i1, i2].set_value(C_R[z, r, s])
+                m.F[i0, i1, i2].set_value(F[z, r_, s])
+                m.C[i0, i1, i2].set_value(C[z, r_, s])
+                m.X[i0, i1, i2].set_value(X[z, r_, s])
+                m.P[i0, i1, i2].set_value(P[z, r_, s])
+                m.r_comp[i0, i1, i2].set_value(r_comp[z, r_, s])
+                m.Ka[i0, i1, i2].set_value(Ka[z, r_, s])
+                m.dCz[i0, i1, i2].set_value(dCz[z, r_, s])
+                m.dCr[i0, i1, i2].set_value(dCr[z, r_, s])
+                m.logKa[i0, i1, i2].set_value(logKa[z, r_, s])
+                m.C_Z[i0, i1, i2].set_value(C_Z[z, r_, s])
+                m.C_R[i0, i1, i2].set_value(C_R[z, r_, s])
                 if not(m.dC_Rr[i0, i1, i2].stale):
-                    m.dC_Rr[i0, i1, i2].set_value(dC_Rr[z, r, s])
-                m.lambda_i[i0, i1, i2].set_value(lambda_i[z, r, s])
-                m.lg_den[i0, i1, i2].set_value(lg_den[z, r, s])
-                m.mu_i[i0, i1, i2].set_value(mu_i[z, r, s])
-                m.mu_den[i0, i1, i2].set_value(mu_den[z, r, s])
-                m.CP_i[i0, i1, i2].set_value(CP_i[z, r, s])
-                m.Dim_[i0, i1, i2].set_value(Dim_[z, r, s])
-                m.Diez_[i0, i1, i2].set_value(Diez_[z, r, s])
+                    m.dC_Rr[i0, i1, i2].set_value(dC_Rr[z, r_, s])
+                m.lambda_i[i0, i1, i2].set_value(lambda_i[z, r_, s])
+                m.lg_den[i0, i1, i2].set_value(lg_den[z, r_, s])
+                m.mu_i[i0, i1, i2].set_value(mu_i[z, r_, s])
+                m.mu_den[i0, i1, i2].set_value(mu_den[z, r_, s])
+                m.CP_i[i0, i1, i2].set_value(CP_i[z, r_, s])
+                m.Dim_[i0, i1, i2].set_value(Dim_[z, r_, s])
+                m.Diez_[i0, i1, i2].set_value(Diez_[z, r_, s])
 
     for z in range(len(Zs)):
         for r in range(len(Rs)):
+            r_ = 0 if m2 else r
             (i0, i1) = (Zs.at(z+1), Rs.at(r+1))
-            m.y[i0, i1].set_value(y[z, r])
-            m.Pt[i0, i1].set_value(Pt[z, r])
-            m.T[i0, i1].set_value(T[z, r])
-            m.Ft[i0, i1].set_value(Ft[z, r])
-            m.DEN[i0, i1].set_value(DEN[z, r])
-            m.k1[i0, i1].set_value(k1[z, r])
-            m.k2[i0, i1].set_value(k2[z, r])
-            m.k3[i0, i1].set_value(k3[z, r])
+            m.y[i0, i1].set_value(y[z, r_])
+            m.Pt[i0, i1].set_value(Pt[z, r_])
+            m.T[i0, i1].set_value(T[z, r_])
+            m.Ft[i0, i1].set_value(Ft[z, r_])
+            m.DEN[i0, i1].set_value(DEN[z, r_])
+            m.k1[i0, i1].set_value(k1[z, r_])
+            m.k2[i0, i1].set_value(k2[z, r_])
+            m.k3[i0, i1].set_value(k3[z, r_])
             if not(m.dy[i0, i1].stale):
-                m.dy[i0, i1].set_value(dy[z, r])
-            m.dTz[i0, i1].set_value(dTz[z, r])
-            m.dTr[i0, i1].set_value(dTr[z, r])
-            m.T_Z[i0, i1].set_value(T_Z[z, r])
+                m.dy[i0, i1].set_value(dy[z, r_])
+            m.dTz[i0, i1].set_value(dTz[z, r_])
+            m.dTr[i0, i1].set_value(dTr[z, r_])
+            m.T_Z[i0, i1].set_value(T_Z[z, r_])
             if not(m.dT_Zz[i0, i1].stale):
-                m.dT_Zz[i0, i1].set_value(dT_Zz[z, r])
-            m.T_Z[i0, i1].set_value(T_R[z, r])
+                m.dT_Zz[i0, i1].set_value(dT_Zz[z, r_])
+            m.T_Z[i0, i1].set_value(T_R[z, r_])
             if not(m.dT_Rr[i0, i1].stale):
-                m.dT_Rr[i0, i1].set_value(dT_Rr[z, r])
-            m.lambda_g[i0, i1].set_value(lambda_g[z, r])
-            m.mu[i0, i1].set_value(mu[z, r])
-            m.CP_g[i0, i1].set_value(CP_g[z, r])
-            m.edC_ZCp[i0, i1].set_value(edC_ZCp[z, r])
-            m.edC_RCp[i0, i1].set_value(edC_RCp[z, r])
+                m.dT_Rr[i0, i1].set_value(dT_Rr[z, r_])
+            m.lambda_g[i0, i1].set_value(lambda_g[z, r_])
+            m.mu[i0, i1].set_value(mu[z, r_])
+            m.CP_g[i0, i1].set_value(CP_g[z, r_])
+            m.edC_ZCp[i0, i1].set_value(edC_ZCp[z, r_])
+            m.edC_RCp[i0, i1].set_value(edC_RCp[z, r_])
 
     for z in range(len(Zs)):
         for r in range(len(Rs)):
+            r_ = 0 if m2 else r
             for s in range(len(Rxs)):
                 (i0, i1, i2) = (Zs.at(z+1), Rs.at(r+1), Rxs.at(s+1))
-                m.Rate[i0, i1, i2].set_value(Rate[z, r, s])
-                m.Ke[i0, i1, i2].set_value(Ke[z, r, s])
+                m.Rate[i0, i1, i2].set_value(Rate[z, r_, s])
+                m.Ke[i0, i1, i2].set_value(Ke[z, r_, s])
 
 
     for z in range(len(Zs)):
         for r in range(len(Rs)):
+            r_ = 0 if m2 else r
             for s0 in range(len(Ss)):
                 for s1 in range(len(Ss)):
                     (i0, i1, i2, i3) = (Zs.at(z+1), Rs.at(r+1), Ss.at(s0+1), Ss.at(s1+1))
-                    lambda_tr[z, r, s0, s1] = m.lambda_tr[i0, i1, i2,
-                                                          i3].set_value()
-                    A_lambda_ij[z, r, s0, s1] = m.A_lambda_ij[i0, i1, i2,
-                                                              i3].set_value()
-                    m.omegaD[i0, i1, i2, i3].set_value(omegaD[z, r, s0, s1])
-                    m.Dij_[i0, i1, i2, i3].set_value(Dij_[z, r, s0, s1])
+                    m.lambda_tr[i0, i1, i2, i3].set_value(lambda_tr[z, r_, s0, s1])
+                    m.A_lambda_ij[i0, i1, i2, i3].set_value(A_lambda_ij[z, r_, s0, s1])
+                    m.omegaD[i0, i1, i2, i3].set_value(omegaD[z, r_, s0, s1])
+                    m.Dij_[i0, i1, i2, i3].set_value(Dij_[z, r_, s0, s1])
 
+    for z in range(len(Zs)):
+        idx = Zs.at(z+1)
+        m.Re[idx].set_value(Re[z])
+        m.Pr[idx].set_value(Pr[z])
+        m.U[idx].set_value(U[z])
